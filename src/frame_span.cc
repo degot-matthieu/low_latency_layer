@@ -13,11 +13,13 @@ void FrameSpan::update(std::shared_ptr<TimestampPool::Handle> handle) {
     this->tail_handle = std::move(handle);
 }
 
-DeviceClock::time_point FrameSpan::await_completed() const {
+std::pair<DeviceClock::time_point, DeviceClock::time_point>
+FrameSpan::await_completed() const {
     if (this->tail_handle) {
-        return this->tail_handle->await_end();
+        return {this->head_handle->await_start(),
+                this->tail_handle->await_end()};
     }
-    return this->head_handle->await_end();
+    return {this->head_handle->await_start(), this->head_handle->await_end()};
 }
 
 bool FrameSpan::has_completed() const {

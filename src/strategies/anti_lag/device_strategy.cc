@@ -5,8 +5,6 @@
 
 #include <vulkan/vulkan_core.h>
 
-#include <thread>
-
 namespace low_latency {
 
 AntiLagDeviceStrategy::AntiLagDeviceStrategy(DeviceContext& device)
@@ -18,8 +16,7 @@ void AntiLagDeviceStrategy::notify_update(const VkAntiLagDataAMD& data) {
     auto lock = std::unique_lock{this->mutex};
 
     this->is_enabled = data.mode != VK_ANTI_LAG_MODE_OFF_AMD;
-
-    this->input_delay = [&]() -> std::chrono::microseconds {
+    const auto min_delay = [&]() -> std::chrono::microseconds {
         using namespace std::chrono;
         if (!data.maxFPS) {
             return 0us;
@@ -27,7 +24,7 @@ void AntiLagDeviceStrategy::notify_update(const VkAntiLagDataAMD& data) {
         return duration_cast<microseconds>(1s) / data.maxFPS;
     }();
 
-    if (!data.pPresentationInfo) {
+    if (!data.pPresentationInfo || !is_enabled) {
         return;
     }
 
@@ -40,8 +37,6 @@ void AntiLagDeviceStrategy::notify_update(const VkAntiLagDataAMD& data) {
     // If we're at the input stage, start marking submissions as relevant.
     this->frame_index.emplace(data.pPresentationInfo->frameIndex);
 
-    // Grab this before we unlock the mutex.
-    const auto delay = this->input_delay;
     lock.unlock();
 
     // We need to collect all queue submission and wait on them in this thread.
@@ -71,13 +66,7 @@ void AntiLagDeviceStrategy::notify_update(const VkAntiLagDataAMD& data) {
         }
     }
 
-    // We might need to wait a little more time to meet our frame limit.
-    using namespace std::chrono;
-    if (delay != 0us && this->previous_input_release.has_value()) {
-        const auto last = this->previous_input_release.get();
-        std::this_thread::sleep_until(last + delay);
-    }
-    this->previous_input_release.set(steady_clock::now());
+    this->delay_controller.delay(min_delay);
 }
 
 bool AntiLagDeviceStrategy::should_track_submissions() {

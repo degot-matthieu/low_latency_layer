@@ -1,6 +1,8 @@
 #ifndef FRAME_SPAN_HH_
 #define FRAME_SPAN_HH_
 
+#include <utility>
+
 #include "timestamp_pool.hh"
 
 namespace low_latency {
@@ -19,8 +21,8 @@ class FrameSpan {
     FrameSpan(std::shared_ptr<TimestampPool::Handle> handle);
     FrameSpan(const FrameSpan&) = delete;
     FrameSpan(FrameSpan&&) = delete;
-    FrameSpan operator=(const FrameSpan&) = delete;
-    FrameSpan operator=(FrameSpan&&) = delete;
+    FrameSpan& operator=(const FrameSpan&) = delete;
+    FrameSpan& operator=(FrameSpan&&) = delete;
     ~FrameSpan();
 
   public:
@@ -30,8 +32,10 @@ class FrameSpan {
   public:
     // Check if GPU work has completed without blocking.
     bool has_completed() const;
-    // Wait for GPU work to complete - returns the time it did.
-    DeviceClock::time_point await_completed() const;
+
+    // Wait for GPU work to complete - returns the start and end time.
+    std::pair<DeviceClock::time_point, DeviceClock::time_point>
+    await_completed() const;
 };
 
 } // namespace low_latency

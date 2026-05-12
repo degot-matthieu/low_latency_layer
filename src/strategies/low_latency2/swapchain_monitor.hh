@@ -2,13 +2,12 @@
 #ifndef SWAPCHAIN_MONITOR_HH_
 #define SWAPCHAIN_MONITOR_HH_
 
-#include "atomic_time_point.hh"
+#include "delay_controller.hh"
 #include "frame_span.hh"
 #include "semaphore_signal.hh"
 
 #include <vulkan/vulkan.h>
 
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <memory>
@@ -29,14 +28,14 @@ class SwapchainMonitor final {
     };
     std::deque<PendingSignal> pending_signals{};
 
+    DelayController delay_controller{};
+
   protected:
     const DeviceContext& device;
 
     std::mutex mutex{};
     std::chrono::microseconds present_delay{};
     bool was_low_latency_requested{};
-    std::atomic<bool> is_monitor_processing{};
-    AtomicTimePoint last_signal_time{};
 
     std::condition_variable_any cv{};
     std::jthread monitor_worker{};
