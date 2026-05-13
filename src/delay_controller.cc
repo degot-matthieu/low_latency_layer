@@ -1,8 +1,6 @@
 #include "delay_controller.hh"
 
 #include <algorithm>
-#include <fstream>
-#include <print>
 
 namespace low_latency {
 
@@ -27,22 +25,27 @@ void DelayController::delay(const DeviceClock::duration& min_delay) {
         std::this_thread::yield();
     }
 
-    // Apply jitter.
+    // Apply jitter and drain.
     const auto jitter =
         this->previous_frame->jitter == 0ns ? frametime / 100 : 0ns;
     for (const auto start = DeviceClock::now();
-         DeviceClock::now() < start + jitter;) {
+         DeviceClock::now() < start + jitter + this->drain;) {
 
         std::this_thread::yield();
     }
 
-    // Apply extra drain time.
-    for (const auto start = DeviceClock::now();
-         DeviceClock::now() < start + this->drain;) {
-        std::this_thread::yield();
+    // For some reason using the UP and DOWN gradient of jitter in Marvel
+    // Rivals is causing issues where the expected sign is inverted. This breaks
+    // our EWMA signal, so only update it on the upside (there's two sides to
+    // every jitter).
+    if (this->previous_frame->jitter == 0ns) {
+        this->previous_frame.emplace(frame_info{
+            .frametime = frametime,
+            .jitter = jitter,
+            .release = DeviceClock::now(),
+        });
+        return;
     }
-
-    const auto now = DeviceClock::now();
 
     // Calculate our gradient.
     // -1 => Applying a random jitter sleep actually improved frametimes.
@@ -50,9 +53,7 @@ void DelayController::delay(const DeviceClock::duration& min_delay) {
     // 0  => Applying a sleep did nothing. We are behind in simulation depth.
     // 1  => Applying a sleep directly impacted frametimes. Don't sleep!
     const auto gradient = [&]() -> auto {
-        const auto dt_jitter = this->previous_frame->jitter != 0ns
-                                   ? -this->previous_frame->jitter
-                                   : jitter;
+        const auto dt_jitter = -this->previous_frame->jitter;
         const auto dt_frametime = frametime - this->previous_frame->frametime;
         const auto dt_frametime_ns = static_cast<double>(dt_frametime.count());
         const auto dt_jitter_ns = static_cast<double>(dt_jitter.count());
@@ -61,34 +62,22 @@ void DelayController::delay(const DeviceClock::duration& min_delay) {
 
     // Feed our gradient into ewma -> our gradient is noisy and an ewma smooths
     // it out into a readable signal.
+    constexpr auto ALPHA = 0.01;
+    this->gradient_ewma =
+        (ALPHA * gradient) + ((1.0 - ALPHA) * this->gradient_ewma);
 
-    if (this->previous_frame->jitter != 0ns) {
-        constexpr auto ALPHA = 0.01; // Not tuned - appears to work OK.
-        this->gradient_ewma =
-            (ALPHA * gradient) + ((1.0 - ALPHA) * this->gradient_ewma);
-
-        this->drain = std::clamp(
-            this->drain + DeviceClock::duration{static_cast<long long>(
-                              (0.5 - this->gradient_ewma) *
-                              static_cast<double>(this->previous_frame->jitter.count()))},
-            DeviceClock::duration{0}, frametime);
-    }
-
-    // LOGGING
-    static auto out = std::ofstream{"/tmp/low_latency.log", std::ios::trunc};
-    std::println(out,
-                 "delay_controller::delay()\n"
-                 "    gradient: {}\n"
-                 "    gradient_ewma: {}\n"
-                 "    drain: {}\n"
-                 "    jitter: {}\n",
-                 gradient, gradient_ewma, drain, jitter);
-    // END LOGGING
+    // Update drain - this should naturally center around 0.5 ewma.
+    const auto delta = [&]() -> auto {
+        const auto ns = this->previous_frame->jitter.count();
+        const auto dt = (0.5 - this->gradient_ewma) * static_cast<double>(ns);
+        return DeviceClock::duration{static_cast<long long>(dt)};
+    }();
+    this->drain = std::clamp(this->drain + delta, 0ns, frametime);
 
     this->previous_frame.emplace(frame_info{
         .frametime = frametime,
         .jitter = jitter,
-        .release = now,
+        .release = DeviceClock::now(),
     });
 }
 

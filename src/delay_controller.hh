@@ -32,20 +32,16 @@ namespace low_latency {
 //     GPU and CPU times are truly decoupled. Annoying.
 //
 // Our solution is to apply a small jitter to every frame. This jitter should
-// allow us to tell
-//
+// allow us to tell whether or not we're hitting the simulation floor because
+// the actual frametime should increase by that jitter amount. We can derive a
+// gradient and push that into an ewma to get a relatively clean signal of
+// 'are we there'.
 class DelayController {
   private:
-    static constexpr double EWMA_DRAIN_ON = 0.50;
-    static constexpr double EWMA_DRAIN_OFF = 0.75;
-
     struct frame_info {
         // The distance between the previous frame's release and when we entered
         // delay(). Doesn't include min_delay, jitter, drain or frametime.
         DeviceClock::time_point::duration frametime{};
-
-        // Delay imposed to drain the simulation queue.
-        DeviceClock::time_point::duration drain{};
 
         // Jitter to detect if we're at the bottom of the simulation queue.
         DeviceClock::time_point::duration jitter{};
