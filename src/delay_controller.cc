@@ -39,7 +39,7 @@ void DelayController::delay(const DeviceClock::duration& min_delay) {
 
     // Apply jitter and drain.
     const auto jitter =
-        this->previous_frame->jitter == 0ns ? frametime / 100 : 0ns;
+        this->previous_frame->jitter == 0ns ? frametime / 50 : 0ns;
     for (const auto start = DeviceClock::now();
          DeviceClock::now() < start + jitter + this->drain;) {
 
@@ -74,7 +74,7 @@ void DelayController::delay(const DeviceClock::duration& min_delay) {
 
     // Feed our gradient into ewma -> our gradient is noisy and an ewma smooths
     // it out into a readable signal.
-    constexpr auto ALPHA = 0.05;
+    constexpr auto ALPHA = 0.01;
     this->gradient_ewma =
         (ALPHA * gradient) + ((1.0 - ALPHA) * this->gradient_ewma);
 

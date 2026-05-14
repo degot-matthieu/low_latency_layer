@@ -21,7 +21,7 @@ void LowLatency2DeviceStrategy::notify_create_swapchain(
     // Default to enabled - if the app is using VK_NV_low_latency2 at all it
     // wants pacing. VkSwapchainLatencyCreateInfoNV can override this, but
     // apps like CS2 recreate swapchains without it (apparent app bug).
-    auto was_low_latency_requested = bool{true};
+    auto was_low_latency_requested = true;
     if (const auto slci = find_next<VkSwapchainLatencyCreateInfoNV>(
             &info, VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV);
         slci) {
