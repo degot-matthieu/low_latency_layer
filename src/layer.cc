@@ -67,27 +67,12 @@ CreateInstance(const VkInstanceCreateInfo* pCreateInfo,
         return result;
     }
 
-    const auto key = layer_context.get_key(*pInstance);
-
-#define INSTANCE_VTABLE_LOAD(name)                                             \
-    vtable.name = reinterpret_cast<PFN_vk##name>(gipa(*pInstance, "vk" #name))
     auto vtable = VkuInstanceDispatchTable{};
-    INSTANCE_VTABLE_LOAD(DestroyInstance);
-    INSTANCE_VTABLE_LOAD(EnumeratePhysicalDevices);
-    INSTANCE_VTABLE_LOAD(GetPhysicalDeviceProperties);
-    INSTANCE_VTABLE_LOAD(GetPhysicalDeviceProperties2);
-    INSTANCE_VTABLE_LOAD(GetPhysicalDeviceProperties2KHR);
-    INSTANCE_VTABLE_LOAD(GetInstanceProcAddr);
-    INSTANCE_VTABLE_LOAD(CreateDevice);
-    INSTANCE_VTABLE_LOAD(EnumerateDeviceExtensionProperties);
-    INSTANCE_VTABLE_LOAD(GetPhysicalDeviceQueueFamilyProperties2KHR);
-    INSTANCE_VTABLE_LOAD(GetPhysicalDeviceFeatures2);
-    INSTANCE_VTABLE_LOAD(GetPhysicalDeviceSurfaceCapabilities2KHR);
-#undef INSTANCE_VTABLE_LOAD
+    vkuInitInstanceDispatchTable(*pInstance, &vtable, gipa);
 
+    const auto key = layer_context.get_key(*pInstance);
     const auto lock = std::scoped_lock{layer_context.mutex};
     assert(!layer_context.contexts.contains(key));
-
     assert(pCreateInfo);
     layer_context.contexts.try_emplace(
         key, std::make_shared<InstanceContext>(
@@ -182,8 +167,9 @@ static VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
+    const auto gipa = create_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
     const auto gdpa = create_info->u.pLayerInfo->pfnNextGetDeviceProcAddr;
-    if (!gdpa) {
+    if (!gdpa || !gipa) {
         return VK_ERROR_INITIALIZATION_FAILED;
     }
     const_cast<VkLayerDeviceCreateInfo*>(create_info)->u.pLayerInfo =
@@ -215,45 +201,21 @@ static VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(
         return next_pCreateInfo;
     }();
 
-    if (const auto result = context->instance.vtable.CreateDevice(
-            physical_device, &next_create_info, pAllocator, pDevice);
+    const auto create_device = reinterpret_cast<PFN_vkCreateDevice>(
+        gipa(VK_NULL_HANDLE, "vkCreateDevice"));
+    if (!create_device) {
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    if (const auto result = create_device(physical_device, &next_create_info,
+                                          pAllocator, pDevice);
         result != VK_SUCCESS) {
 
         return result;
     }
 
-#define DEVICE_VTABLE_LOAD(name)                                               \
-    vtable.name = reinterpret_cast<PFN_vk##name>(gdpa(*pDevice, "vk" #name))
     auto vtable = VkuDeviceDispatchTable{};
-    DEVICE_VTABLE_LOAD(GetDeviceProcAddr);
-    DEVICE_VTABLE_LOAD(DestroyDevice);
-    DEVICE_VTABLE_LOAD(GetDeviceQueue);
-    DEVICE_VTABLE_LOAD(QueueSubmit);
-    DEVICE_VTABLE_LOAD(CreateQueryPool);
-    DEVICE_VTABLE_LOAD(DestroyQueryPool);
-    DEVICE_VTABLE_LOAD(GetQueryPoolResults);
-    DEVICE_VTABLE_LOAD(CreateCommandPool);
-    DEVICE_VTABLE_LOAD(DestroyCommandPool);
-    DEVICE_VTABLE_LOAD(AllocateCommandBuffers);
-    DEVICE_VTABLE_LOAD(FreeCommandBuffers);
-    DEVICE_VTABLE_LOAD(BeginCommandBuffer);
-    DEVICE_VTABLE_LOAD(EndCommandBuffer);
-    DEVICE_VTABLE_LOAD(ResetCommandBuffer);
-    DEVICE_VTABLE_LOAD(CmdResetQueryPool);
-    DEVICE_VTABLE_LOAD(GetDeviceQueue2);
-    DEVICE_VTABLE_LOAD(QueueSubmit2);
-    DEVICE_VTABLE_LOAD(AcquireNextImageKHR);
-    DEVICE_VTABLE_LOAD(QueuePresentKHR);
-    DEVICE_VTABLE_LOAD(AcquireNextImage2KHR);
-    DEVICE_VTABLE_LOAD(CmdWriteTimestamp2KHR);
-    DEVICE_VTABLE_LOAD(QueueSubmit2KHR);
-    DEVICE_VTABLE_LOAD(GetCalibratedTimestampsKHR);
-    DEVICE_VTABLE_LOAD(ResetQueryPoolEXT);
-    DEVICE_VTABLE_LOAD(SignalSemaphore);
-    DEVICE_VTABLE_LOAD(CreateSwapchainKHR);
-    DEVICE_VTABLE_LOAD(DestroySwapchainKHR);
-    DEVICE_VTABLE_LOAD(GetSemaphoreCounterValue);
-#undef DEVICE_VTABLE_LOAD
+    vkuInitDeviceDispatchTable(*pDevice, &vtable, gdpa);
 
     const auto key = layer_context.get_key(*pDevice);
     const auto lock = std::scoped_lock{layer_context.mutex};
