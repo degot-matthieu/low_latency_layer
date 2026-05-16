@@ -1,20 +1,20 @@
-#include "frame_span.hh"
+#include "submission_span.hh"
 
 namespace low_latency {
 
-FrameSpan::FrameSpan(std::shared_ptr<TimestampPool::Handle> handle)
+SubmissionSpan::SubmissionSpan(std::shared_ptr<TimestampPool::Handle> handle)
     : head_handle(std::move(handle)) {
     assert(this->head_handle); // Must not be null
 }
 
-FrameSpan::~FrameSpan() {}
+SubmissionSpan::~SubmissionSpan() {}
 
-void FrameSpan::update(std::shared_ptr<TimestampPool::Handle> handle) {
+void SubmissionSpan::update(std::shared_ptr<TimestampPool::Handle> handle) {
     this->tail_handle = std::move(handle);
 }
 
 std::pair<DeviceClock::time_point, DeviceClock::time_point>
-FrameSpan::await_completed() const {
+SubmissionSpan::await_completed() const {
     if (this->tail_handle) {
         return {this->head_handle->await_start(),
                 this->tail_handle->await_end()};
@@ -22,7 +22,7 @@ FrameSpan::await_completed() const {
     return {this->head_handle->await_start(), this->head_handle->await_end()};
 }
 
-bool FrameSpan::has_completed() const {
+bool SubmissionSpan::has_completed() const {
     if (this->tail_handle) {
         return this->tail_handle->has_end();
     }

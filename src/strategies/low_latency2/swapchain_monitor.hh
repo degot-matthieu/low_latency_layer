@@ -3,8 +3,8 @@
 #define SWAPCHAIN_MONITOR_HH_
 
 #include "delay_controller.hh"
-#include "frame_span.hh"
 #include "semaphore_signal.hh"
+#include "submission_span.hh"
 
 #include <vulkan/vulkan.h>
 
@@ -20,11 +20,11 @@ class DeviceContext;
 
 class SwapchainMonitor final {
   private:
-    std::vector<std::unique_ptr<FrameSpan>> pending_frame_spans{};
+    std::vector<std::unique_ptr<SubmissionSpan>> pending_submission_spans{};
 
     struct PendingSignal final {
         SemaphoreSignal semaphore_signal;
-        std::vector<std::unique_ptr<FrameSpan>> frame_spans{};
+        std::vector<std::unique_ptr<SubmissionSpan>> submission_spans{};
     };
     std::deque<PendingSignal> pending_signals{};
 
@@ -55,7 +55,7 @@ class SwapchainMonitor final {
 
     void notify_semaphore(const SemaphoreSignal& semaphore_signal);
 
-    void attach_work(std::vector<std::unique_ptr<FrameSpan>> submissions);
+    void attach_work(std::vector<std::unique_ptr<SubmissionSpan>> submissions);
 };
 
 } // namespace low_latency

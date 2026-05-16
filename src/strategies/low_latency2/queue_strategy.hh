@@ -1,8 +1,8 @@
 #ifndef STRATEGIES_LOW_LATENCY2_QUEUE_STRATEGY_HH_
 #define STRATEGIES_LOW_LATENCY2_QUEUE_STRATEGY_HH_
 
-#include "frame_span.hh"
 #include "strategies/queue_strategy.hh"
+#include "submission_span.hh"
 
 #include <atomic>
 #include <deque>
@@ -25,7 +25,8 @@ class LowLatency2QueueStrategy final : public QueueStrategy {
     // strategy when we present and actually can associate them to some
     // vkSwapchainKHR.
     std::mutex mutex{};
-    std::unordered_map<std::uint64_t, std::unique_ptr<FrameSpan>> frame_spans{};
+    std::unordered_map<std::uint64_t, std::unique_ptr<SubmissionSpan>>
+        submission_spans{};
     std::deque<std::uint64_t> stale_present_ids{};
     std::atomic<bool> is_out_of_band{}; // atomic to avoid lock
 

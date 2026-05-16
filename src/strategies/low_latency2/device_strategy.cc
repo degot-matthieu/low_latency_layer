@@ -69,8 +69,8 @@ void LowLatency2DeviceStrategy::submit_swapchain_present_id(
     // Iterate through all queues and grab any work that's associated with this
     // present_id. Turn it into a vector of work that we give to our swapchain
     // monitor.
-    auto work = [&]() -> std::vector<std::unique_ptr<FrameSpan>> {
-        auto work = std::vector<std::unique_ptr<FrameSpan>>{};
+    auto work = [&]() -> std::vector<std::unique_ptr<SubmissionSpan>> {
+        auto work = std::vector<std::unique_ptr<SubmissionSpan>>{};
         const auto lock = std::shared_lock{this->device.mutex};
         for (const auto& queue_iter : this->device.queues) {
             const auto& queue = queue_iter.second;
@@ -85,14 +85,14 @@ void LowLatency2DeviceStrategy::submit_swapchain_present_id(
 
             // Need the lock now - we're modifying it.
             const auto strategy_lock = std::unique_lock{strategy->mutex};
-            const auto iter = strategy->frame_spans.find(present_id);
-            if (iter == std::end(strategy->frame_spans)) {
+            const auto iter = strategy->submission_spans.find(present_id);
+            if (iter == std::end(strategy->submission_spans)) {
                 continue;
             }
 
             // Make sure we clean it up from the present as well.
             work.push_back(std::move(iter->second));
-            strategy->frame_spans.erase(iter);
+            strategy->submission_spans.erase(iter);
         }
         return work;
     }();

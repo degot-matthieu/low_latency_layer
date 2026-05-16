@@ -3,7 +3,7 @@
 
 #include "strategies/queue_strategy.hh"
 
-#include "frame_span.hh"
+#include "submission_span.hh"
 #include <memory>
 #include <mutex>
 
@@ -14,7 +14,7 @@ class QueueContext;
 class AntiLagQueueStrategy final : public QueueStrategy {
   public:
     std::mutex mutex{};
-    std::unique_ptr<FrameSpan> frame_span{}; // Null represents no work.
+    std::unique_ptr<SubmissionSpan> submission_span{};
 
   public:
     explicit AntiLagQueueStrategy(QueueContext& queue);

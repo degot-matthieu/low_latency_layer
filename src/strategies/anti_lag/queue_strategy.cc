@@ -19,10 +19,11 @@ void AntiLagQueueStrategy::notify_submit(
     }
 
     const auto lock = std::scoped_lock(this->mutex);
-    if (this->frame_span) {
-        this->frame_span->update(std::move(handle));
+    if (this->submission_span) {
+        this->submission_span->update(std::move(handle));
     } else {
-        this->frame_span = std::make_unique<FrameSpan>(std::move(handle));
+        this->submission_span =
+            std::make_unique<SubmissionSpan>(std::move(handle));
     }
 }
 
@@ -35,10 +36,11 @@ void AntiLagQueueStrategy::notify_submit(
     }
 
     const auto lock = std::scoped_lock(this->mutex);
-    if (this->frame_span) {
-        this->frame_span->update(std::move(handle));
+    if (this->submission_span) {
+        this->submission_span->update(std::move(handle));
     } else {
-        this->frame_span = std::make_unique<FrameSpan>(std::move(handle));
+        this->submission_span =
+            std::make_unique<SubmissionSpan>(std::move(handle));
     }
 }
 

@@ -48,9 +48,9 @@ void SwapchainMonitor::do_monitor(const std::stop_token stoken) {
         lock.unlock();
 
         // Wait for work to complete.
-        for (const auto& frame_span : pending_signal.frame_spans) {
-            if (frame_span) {
-                frame_span->await_completed();
+        for (const auto& submission_span : pending_signal.submission_spans) {
+            if (submission_span) {
+                submission_span->await_completed();
             }
         }
 
@@ -75,22 +75,22 @@ void SwapchainMonitor::notify_semaphore(
 
     this->pending_signals.emplace_back(PendingSignal{
         .semaphore_signal = semaphore_signal,
-        .frame_spans = std::move(this->pending_frame_spans),
+        .submission_spans = std::move(this->pending_submission_spans),
     });
-    this->pending_frame_spans.clear();
+    this->pending_submission_spans.clear();
 
     lock.unlock();
     this->cv.notify_one();
 }
 
 void SwapchainMonitor::attach_work(
-    std::vector<std::unique_ptr<FrameSpan>> frame_spans) {
+    std::vector<std::unique_ptr<SubmissionSpan>> submission_spans) {
 
     const auto lock = std::scoped_lock{this->mutex};
     if (!this->was_low_latency_requested) {
         return;
     }
-    this->pending_frame_spans = std::move(frame_spans);
+    this->pending_submission_spans = std::move(submission_spans);
 }
 
 } // namespace low_latency

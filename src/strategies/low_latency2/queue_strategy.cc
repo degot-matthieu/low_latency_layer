@@ -26,9 +26,10 @@ static void notify_submit_impl(LowLatency2QueueStrategy& strategy,
     }();
 
     const auto lock = std::scoped_lock{strategy.mutex};
-    const auto [iter, inserted] = strategy.frame_spans.try_emplace(present_id);
+    const auto [iter, inserted] =
+        strategy.submission_spans.try_emplace(present_id);
     if (inserted) {
-        iter->second = std::make_unique<FrameSpan>(std::move(handle));
+        iter->second = std::make_unique<SubmissionSpan>(std::move(handle));
         // Add our present_id to our ring tracking if it's non-zero.
         if (present_id) {
             strategy.stale_present_ids.push_back(present_id);
@@ -43,7 +44,7 @@ static void notify_submit_impl(LowLatency2QueueStrategy& strategy,
 
         const auto stale_present_id = strategy.stale_present_ids.front();
         strategy.stale_present_ids.pop_front();
-        strategy.frame_spans.erase(stale_present_id);
+        strategy.submission_spans.erase(stale_present_id);
     }
 }
 

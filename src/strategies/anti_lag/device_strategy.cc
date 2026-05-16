@@ -42,8 +42,8 @@ void AntiLagDeviceStrategy::notify_update(const VkAntiLagDataAMD& data) {
 
     // We need to collect all queue submission and wait on them in this thread.
     // Input stage needs to wait for all queue submissions to complete.
-    const auto queue_frame_spans = [&]() -> auto {
-        auto queue_frame_spans = std::vector<std::unique_ptr<FrameSpan>>{};
+    const auto work = [&]() -> auto {
+        auto work = std::vector<std::unique_ptr<SubmissionSpan>>{};
         const auto device_lock = std::shared_lock{this->device.mutex};
         for (const auto& iter : this->device.queues) {
             const auto& queue = iter.second;
@@ -54,16 +54,16 @@ void AntiLagDeviceStrategy::notify_update(const VkAntiLagDataAMD& data) {
 
             // Grab it from the queue, don't hold the lock.
             const auto queue_lock = std::scoped_lock{strategy->mutex};
-            queue_frame_spans.emplace_back(std::move(strategy->frame_span));
-            strategy->frame_span.reset();
+            work.emplace_back(std::move(strategy->submission_span));
+            strategy->submission_span.reset();
         }
-        return queue_frame_spans;
+        return work;
     }();
 
     // Wait on outstanding work to complete.
-    for (const auto& frame_span : queue_frame_spans) {
-        if (frame_span) { // Can still be null here.
-            frame_span->await_completed();
+    for (const auto& submission_span : work) {
+        if (submission_span) { // Can still be null here.
+            submission_span->await_completed();
         }
     }
 

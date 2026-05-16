@@ -1,5 +1,5 @@
-#ifndef FRAME_SPAN_HH_
-#define FRAME_SPAN_HH_
+#ifndef SUBMISSION_SPAN_HH_
+#define SUBMISSION_SPAN_HH_
 
 #include <utility>
 
@@ -12,21 +12,21 @@ namespace low_latency {
 // that a queue needs to keep track of. It only keeps at max two - the first
 // head handle and the tail handle, which is allowed to be null in the case of
 // only a single submission for that queue.
-class FrameSpan {
+class SubmissionSpan {
   public:
     const std::shared_ptr<TimestampPool::Handle> head_handle{};
     std::shared_ptr<TimestampPool::Handle> tail_handle{};
 
   public:
-    explicit FrameSpan(std::shared_ptr<TimestampPool::Handle> handle);
-    FrameSpan(const FrameSpan&) = delete;
-    FrameSpan(FrameSpan&&) = delete;
-    FrameSpan& operator=(const FrameSpan&) = delete;
-    FrameSpan& operator=(FrameSpan&&) = delete;
-    ~FrameSpan();
+    explicit SubmissionSpan(std::shared_ptr<TimestampPool::Handle> handle);
+    SubmissionSpan(const SubmissionSpan&) = delete;
+    SubmissionSpan(SubmissionSpan&&) = delete;
+    SubmissionSpan& operator=(const SubmissionSpan&) = delete;
+    SubmissionSpan& operator=(SubmissionSpan&&) = delete;
+    ~SubmissionSpan();
 
   public:
-    // Update the framespan's tail to include this timestamp.
+    // Update the tail to include this timestamp.
     void update(std::shared_ptr<TimestampPool::Handle> handle);
 
   public:
