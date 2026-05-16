@@ -750,9 +750,9 @@ AntiLagUpdateAMD(VkDevice device, const VkAntiLagDataAMD* pData) {
     strategy->notify_update(*pData);
 }
 
-VkResult LatencySleepNV(VkDevice device,
-                        [[maybe_unused]] VkSwapchainKHR swapchain,
-                        const VkLatencySleepInfoNV* pSleepInfo) {
+static VKAPI_ATTR VkResult VKAPI_CALL
+LatencySleepNV(VkDevice device, VkSwapchainKHR swapchain,
+               const VkLatencySleepInfoNV* pSleepInfo) {
 
     const auto context = layer_context.get_context(device);
     assert(pSleepInfo);
@@ -765,7 +765,7 @@ VkResult LatencySleepNV(VkDevice device,
     return VK_SUCCESS;
 }
 
-void QueueNotifyOutOfBandNV(
+static VKAPI_ATTR void VKAPI_CALL QueueNotifyOutOfBandNV(
     VkQueue queue,
     [[maybe_unused]] const VkOutOfBandQueueTypeInfoNV* pQueueTypeInfo) {
 
@@ -778,8 +778,8 @@ void QueueNotifyOutOfBandNV(
     strategy->notify_out_of_band();
 }
 
-VkResult SetLatencySleepModeNV(
-    VkDevice device, [[maybe_unused]] VkSwapchainKHR swapchain,
+static VKAPI_ATTR VkResult VKAPI_CALL SetLatencySleepModeNV(
+    VkDevice device, VkSwapchainKHR swapchain,
     [[maybe_unused]] const VkLatencySleepModeInfoNV* pSleepModeInfo) {
 
     const auto context = layer_context.get_context(device);
@@ -793,14 +793,14 @@ VkResult SetLatencySleepModeNV(
     return VK_SUCCESS;
 }
 
-void SetLatencyMarkerNV(VkDevice, VkSwapchainKHR,
-                        const VkSetLatencyMarkerInfoNV*) {
+static VKAPI_ATTR void VKAPI_CALL
+SetLatencyMarkerNV(VkDevice, VkSwapchainKHR, const VkSetLatencyMarkerInfoNV*) {
     // STUB
 }
 
-void GetLatencyTimingsNV([[maybe_unused]] VkDevice device,
-                         [[maybe_unused]] VkSwapchainKHR swapchain,
-                         VkGetLatencyMarkerInfoNV* timings) {
+static VKAPI_ATTR void VKAPI_CALL GetLatencyTimingsNV(
+    [[maybe_unused]] VkDevice device, [[maybe_unused]] VkSwapchainKHR swapchain,
+    VkGetLatencyMarkerInfoNV* timings) {
     // We don't do anything here but the caller still expects us to change
     // timings->timingCount to the amount we wrote - so set it to zero.
     assert(timings);
