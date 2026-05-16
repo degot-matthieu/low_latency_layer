@@ -18,8 +18,10 @@ add_library(${LIBRARY_NAME} SHARED
 )
 
 find_package(Vulkan REQUIRED)
+find_package(VulkanUtilityLibraries REQUIRED)
 target_link_libraries(${LIBRARY_NAME}
-    ${Vulkan_LIBRARIES}
+    Vulkan::Vulkan
+    Vulkan::SafeStruct
 )
 
 target_include_directories(${LIBRARY_NAME} PRIVATE

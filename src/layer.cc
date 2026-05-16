@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <vulkan/utility/vk_dispatch_table.h>
+#include <vulkan/utility/vk_safe_struct.hpp>
 #include <vulkan/utility/vk_struct_helper.hpp>
 #include <vulkan/vk_layer.h>
 #include <vulkan/vk_platform.h>
@@ -220,12 +221,66 @@ static VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(
         return next_extensions;
     }();
 
-    const auto next_create_info = [&]() -> VkDeviceCreateInfo {
-        auto next_pCreateInfo = *pCreateInfo;
-        next_pCreateInfo.ppEnabledExtensionNames = std::data(next_extensions);
-        next_pCreateInfo.enabledExtensionCount =
+    const auto next_create_info = [&]() -> auto {
+        // Give vku's CreateInfo a patched copy so its own deep copy is correct.
+        auto create_info_copy = *pCreateInfo;
+        create_info_copy.ppEnabledExtensionNames = std::data(next_extensions);
+        create_info_copy.enabledExtensionCount =
             static_cast<std::uint32_t>(std::size(next_extensions));
-        return next_pCreateInfo;
+
+        auto next_create_info = vku::safe_VkDeviceCreateInfo{&create_info_copy};
+        if (!was_layer_enabled) {
+            return next_create_info;
+        }
+
+        // Sync2 lives in 1.3 features first. If that doesn't exist look for
+        // sync2 features or append it.
+        if (const auto vk13 =
+                vku::FindStructInPNextChain<VkPhysicalDeviceVulkan13Features>(
+                    const_cast<void*>(next_create_info.pNext));
+            vk13) {
+
+            vk13->synchronization2 = VK_TRUE;
+        } else if (const auto s2f = vku::FindStructInPNextChain<
+                       VkPhysicalDeviceSynchronization2Features>(
+                       const_cast<void*>(next_create_info.pNext));
+                   s2f) {
+
+            s2f->synchronization2 = VK_TRUE;
+        } else {
+            vku::AddToPnext(
+                next_create_info,
+                VkPhysicalDeviceSynchronization2Features{
+                    .sType =
+                        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+                    .synchronization2 = VK_TRUE,
+                });
+        }
+
+        // HQR is in 1.2 features first - then same idea as sync2.
+        if (const auto vk12 =
+                vku::FindStructInPNextChain<VkPhysicalDeviceVulkan12Features>(
+                    const_cast<void*>(next_create_info.pNext));
+            vk12) {
+
+            vk12->hostQueryReset = VK_TRUE;
+        } else if (const auto hqrf = vku::FindStructInPNextChain<
+                       VkPhysicalDeviceHostQueryResetFeatures>(
+                       const_cast<void*>(next_create_info.pNext));
+                   hqrf) {
+
+            hqrf->hostQueryReset = VK_TRUE;
+        } else {
+            vku::AddToPnext(
+                next_create_info,
+                VkPhysicalDeviceHostQueryResetFeatures{
+                    .sType =
+                        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES,
+                    .hostQueryReset = VK_TRUE,
+                });
+        }
+
+        return next_create_info;
     }();
 
     const auto create_device = reinterpret_cast<PFN_vkCreateDevice>(
@@ -234,8 +289,8 @@ static VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
-    if (const auto result = create_device(physical_device, &next_create_info,
-                                          pAllocator, pDevice);
+    if (const auto result = create_device(
+            physical_device, next_create_info.ptr(), pAllocator, pDevice);
         result != VK_SUCCESS) {
 
         return result;
@@ -352,30 +407,10 @@ QueueSubmit(VkQueue queue, std::uint32_t submit_count,
         return vtable.QueueSubmit(queue, submit_count, submit_infos, fence);
     }
 
-    // What's happening here?
-    // We are making a very modest modification to all vkQueueSubmits where we
-    // inject a start and end timestamp query command buffer that writes when
-    // the GPU started and finished work for each submission. Note, we do *NOT*
-    // use or modify any semaphores as a mechanism to signal completion or the
-    // availability of these submits for multiple reasons:
-    //     1. Modifying semaphores (particuarly in vkQueueSubmit1) is ANNOYING
-    //        done correctly. The pNext chain is const and difficult to modify
-    //        without traversing the entire thing and doing surgical deep copies
-    //        and patches for multiple pNext's sType's. It's easier to leave it
-    //        alone. If we do edit them it's either a maintenance nightmare or
-    //        an illegal const cast timebomb that breaks valid vulkan
-    //        applications that pass truly read only vkSubmitInfo->pNext's.
-    //     2. Semaphores only signal at the end of their work, so we cannot use
-    //        them as a mechanism to know if work has started without doing
-    //        another dummy submission. If we did this it adds complexity and
-    //        also might skew our timestamps slightly as they wouldn't be a part
-    //        of the submission which contained those command buffers.
-    //     3. Timestamps support querying if their work has started/ended
-    //        as long as we use the vkHostQueryReset extension to reset them
-    //        before we consider them queryable. This means we don't need a
-    //        'is it valid to query my timestamps' timeline semaphore.
-    //     4. The performance impact of using semaphores vs timestamps is
-    //        negligible.
+    // We are making a modest modification to all vkQueueSubmits where we inject
+    // a start and end timestamp query command buffer that writes when the GPU
+    // started and finished work for each submission. We can wait on the
+    // completion of these queue submissions through this mechanism.
 
     using cbs_t = std::vector<VkCommandBuffer>;
     auto next_submits = std::vector<VkSubmitInfo>{};

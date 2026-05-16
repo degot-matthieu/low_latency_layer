@@ -109,6 +109,7 @@ We used Gentoo running KDE Plasma 6.6. Direct scanout was enabled throughout the
 ## Overwatch 2
 ![overwatch2](https://raw.githubusercontent.com/nJ3ahxac/files/main/low_latency_layer/overwatch2.png)
 
+- Overwatch 2 lets us test at 4K without Gamescope latency overhead. As the GPU becomes a greater bottleneck here, the result is more representative of weaker hardware running at lower resolutions.
 - Like Resident Evil Requiem, Overwatch 2 supports Reflex but not Anti-Lag 2, so we again compare against Anti-Lag 1 as the closest Windows alternative for AMD users.
 - Anti-Lag 1 on Windows tracked the native Linux baseline closely, offering little benefit.
 - Our Reflex path performed well, comfortably ahead of the other tested configurations.
