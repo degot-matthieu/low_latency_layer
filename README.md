@@ -59,15 +59,14 @@ The 'Boost' mode of Reflex is supported but is functionally identical to 'On' - 
 Benchmarks were conducted under worst-case conditions using high-end AMD hardware. For configurations that create higher GPU load, these latency reductions will be more pronounced. We preferred testing on low resolution and high refresh-rate monitors as they provide less variance and are more likely to reveal correctness issues against proprietary reference implementations.
 
 ## Setup and Methodology
+
+[testing.webm](https://github.com/user-attachments/assets/b97efee4-8c1f-4cde-acdf-676a2c283d3d)
+
 *   **GPU:** ASUS TUF Radeon RX 7900 XTX (flashed 550W Aqua Extreme BIOS) 1250MHz VRAM watercooled
 *   **CPU:** AMD Ryzen 7 9800X3D 102.0MHz eCLK -15 CO 2133MHz FCLK delid watercooled
 *   **Memory:** 64GB 2x32GB Hynix A-Die 6000MT/s CL28-36-36-30 GDM:off Nitro:1-2-0 (tuned)
 
 We used Gentoo running KDE Plasma 6.6. Direct scanout was enabled throughout the testing process, verified as KWin’s 'Compositing' watermark disappeared when in fullscreen. Latency was measured using the NVIDIA Reflex Analyzer integrated into the ASUS PG248QP.
-
-<video src="https://raw.githubusercontent.com/nJ3ahxac/files/main/low_latency_layer/testing.webm" autoplay loop muted playsinline width="720">
-    Unsupported
-</video>
 
 ## THE FINALS
 ![tf](https://raw.githubusercontent.com/nJ3ahxac/files/main/low_latency_layer/the_finals.png)
