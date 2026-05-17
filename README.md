@@ -65,6 +65,10 @@ Benchmarks were conducted under worst-case conditions using high-end AMD hardwar
 
 We used Gentoo running KDE Plasma 6.6. Direct scanout was enabled throughout the testing process, verified as KWin’s 'Compositing' watermark disappeared when in fullscreen. Latency was measured using the NVIDIA Reflex Analyzer integrated into the ASUS PG248QP.
 
+<video src="https://raw.githubusercontent.com/nJ3ahxac/files/main/low_latency_layer/testing.webm" autoplay loop muted playsinline width="720">
+    Unsupported
+</video>
+
 ## THE FINALS
 ![tf](https://raw.githubusercontent.com/nJ3ahxac/files/main/low_latency_layer/the_finals.png)
 **Comments**
