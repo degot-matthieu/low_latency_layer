@@ -39,7 +39,8 @@ TimestampPool::QueryChunk::QueryChunk(const QueueContext& queue_context)
     this->free_indices = []() {
         constexpr auto keys = std::views::iota(0u, QueryChunk::CHUNK_SIZE) |
                               std::views::stride(2u);
-        return std::unordered_set<std::uint32_t>(std::from_range, keys);
+        return std::unordered_set<std::uint32_t>(std::begin(keys),
+                                                 std::end(keys));
     }();
 }
 

@@ -1,5 +1,6 @@
 #include "layer.hh"
 
+#include <iterator>
 #include <ranges>
 #include <span>
 #include <string_view>
@@ -164,7 +165,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(
                   pCreateInfo->enabledExtensionCount};
 
     const auto requested = std::unordered_set<std::string_view>(
-        std::from_range, enabled_extensions);
+        std::begin(enabled_extensions), std::end(enabled_extensions));
 
     const auto was_layer_enabled =
         requested.contains(!layer_context.should_expose_reflex
@@ -207,7 +208,8 @@ static VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(
 
     // Build a next extensions vector from what they have requested.
     const auto next_extensions = [&]() -> std::vector<const char*> {
-        auto next_extensions = std::vector{std::from_range, enabled_extensions};
+        auto next_extensions = std::vector(std::begin(enabled_extensions),
+                                           std::end(enabled_extensions));
 
         // Only append the extra extension if it wasn't already asked for.
         if (was_layer_enabled) {
