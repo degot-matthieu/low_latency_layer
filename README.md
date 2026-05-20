@@ -40,16 +40,16 @@ By default, the layer exposes the `VK_AMD_anti_lag` device extension. For Linux 
 | Variable | Description |
 | :--- | :--- |
 | `LOW_LATENCY_LAYER_REFLEX` | Set to `1` to expose `VK_NV_low_latency2` instead of `VK_AMD_anti_lag`. |
-| `LOW_LATENCY_LAYER_SPOOF_NVIDIA` | Set to `1` to report the device as an NVIDIA GPU to the application, regardless of actual hardware. This is necessary for many applications to expose Reflex as an option. It _might_ be beneficial to keep this off when the application allows it. |
 | `LOW_LATENCY_LAYER_FORCE_DECOUPLED` | Set to `1` to force mitigation of a decoupled simulation and render queue. This is disabled by default - only enabled for Marvel Rivals. Refer to `delay_controller.hh` for more details. Do not use outside of debugging - this will hurt latency in most applications. |
+| `LOW_LATENCY_LAYER_SPOOF_NVIDIA` | Set to `1` to report the device as an NVIDIA GPU to the application, regardless of actual hardware. Not recommended - prefer `DXVK_CONFIG="dxgi.hideAmdGpu = True"`, as this option is known to break Proton's FSR4 upgrade path. |
 | `DISABLE_LOW_LATENCY_LAYER` | Expose to disable the layer. |
 
 
-For Proton-based applications, you must enable NVAPI support alongside the layer's configuration. Use the `PROTON_FORCE_NVAPI=1` environment variable to force this support regardless of your hardware.
+For Proton-based applications, try `LOW_LATENCY_LAYER_REFLEX=1` on its own first. If the Reflex option does not appear in-game, add `DXVK_CONFIG="dxgi.hideAmdGpu = True"`. Avoid `PROTON_FORCE_NVAPI=1` and `LOW_LATENCY_LAYER_SPOOF_NVIDIA=1` - both are known to break Proton's FSR4 upgrade path (`PROTON_FSR4_UPGRADE` / `PROTON_FSR4_RDNA3_UPGRADE`).
 
 **Steam launch options example:**
 ```
-PROTON_FORCE_NVAPI=1 LOW_LATENCY_LAYER_REFLEX=1 LOW_LATENCY_LAYER_SPOOF_NVIDIA=1 %command%
+DXVK_CONFIG="dxgi.hideAmdGpu = True" LOW_LATENCY_LAYER_REFLEX=1 %command%
 ```
 
 The 'Boost' mode of Reflex is supported but is functionally identical to 'On' - the layer treats both modes identically.
