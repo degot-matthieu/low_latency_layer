@@ -837,8 +837,12 @@ DestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain,
 static VKAPI_ATTR void VKAPI_CALL
 AntiLagUpdateAMD(VkDevice device, const VkAntiLagDataAMD* pData) {
     const auto context = layer_context.get_context(device);
-    assert(pData);
+    if (layer_context.should_expose_reflex) {
+        context->vtable.AntiLagUpdateAMD(device, pData);
+        return;
+    }
 
+    assert(pData);
     const auto strategy =
         dynamic_cast<AntiLagDeviceStrategy*>(context->strategy.get());
     assert(strategy);
@@ -850,8 +854,11 @@ LatencySleepNV(VkDevice device, VkSwapchainKHR swapchain,
                const VkLatencySleepInfoNV* pSleepInfo) {
 
     const auto context = layer_context.get_context(device);
-    assert(pSleepInfo);
+    if (!layer_context.should_expose_reflex) {
+        return context->vtable.LatencySleepNV(device, swapchain, pSleepInfo);
+    }
 
+    assert(pSleepInfo);
     const auto strategy =
         dynamic_cast<LowLatency2DeviceStrategy*>(context->strategy.get());
     assert(strategy);
@@ -861,23 +868,30 @@ LatencySleepNV(VkDevice device, VkSwapchainKHR swapchain,
 }
 
 static VKAPI_ATTR void VKAPI_CALL QueueNotifyOutOfBandNV(
-    VkQueue queue,
-    [[maybe_unused]] const VkOutOfBandQueueTypeInfoNV* pQueueTypeInfo) {
+    VkQueue queue, const VkOutOfBandQueueTypeInfoNV* pQueueTypeInfo) {
+
+    const auto context = layer_context.get_context(queue);
+    if (!layer_context.should_expose_reflex) {
+        context->device.vtable.QueueNotifyOutOfBandNV(queue, pQueueTypeInfo);
+        return;
+    }
 
     // Kind of interesting how you can't turn it back on once it's turned off.
-    const auto context = layer_context.get_context(queue);
-
     const auto strategy =
         dynamic_cast<LowLatency2QueueStrategy*>(context->strategy.get());
     assert(strategy);
     strategy->notify_out_of_band();
 }
 
-static VKAPI_ATTR VkResult VKAPI_CALL SetLatencySleepModeNV(
-    VkDevice device, VkSwapchainKHR swapchain,
-    [[maybe_unused]] const VkLatencySleepModeInfoNV* pSleepModeInfo) {
+static VKAPI_ATTR VkResult VKAPI_CALL
+SetLatencySleepModeNV(VkDevice device, VkSwapchainKHR swapchain,
+                      const VkLatencySleepModeInfoNV* pSleepModeInfo) {
 
     const auto context = layer_context.get_context(device);
+    if (!layer_context.should_expose_reflex) {
+        return context->vtable.SetLatencySleepModeNV(device, swapchain,
+                                                     pSleepModeInfo);
+    }
 
     const auto strategy =
         dynamic_cast<LowLatency2DeviceStrategy*>(context->strategy.get());
@@ -889,13 +903,25 @@ static VKAPI_ATTR VkResult VKAPI_CALL SetLatencySleepModeNV(
 }
 
 static VKAPI_ATTR void VKAPI_CALL
-SetLatencyMarkerNV(VkDevice, VkSwapchainKHR, const VkSetLatencyMarkerInfoNV*) {
-    // STUB
+SetLatencyMarkerNV(VkDevice device, VkSwapchainKHR swapchain,
+                   const VkSetLatencyMarkerInfoNV* info) {
+    if (!layer_context.should_expose_reflex) {
+        const auto context = layer_context.get_context(device);
+        context->vtable.SetLatencyMarkerNV(device, swapchain, info);
+        return;
+    }
 }
 
-static VKAPI_ATTR void VKAPI_CALL GetLatencyTimingsNV(
-    [[maybe_unused]] VkDevice device, [[maybe_unused]] VkSwapchainKHR swapchain,
-    VkGetLatencyMarkerInfoNV* timings) {
+static VKAPI_ATTR void VKAPI_CALL
+GetLatencyTimingsNV(VkDevice device, VkSwapchainKHR swapchain,
+                    VkGetLatencyMarkerInfoNV* timings) {
+
+    if (!layer_context.should_expose_reflex) {
+        const auto context = layer_context.get_context(device);
+        context->vtable.GetLatencyTimingsNV(device, swapchain, timings);
+        return;
+    }
+
     // We don't do anything here but the caller still expects us to change
     // timings->timingCount to the amount we wrote - so set it to zero.
     assert(timings);
